@@ -107,7 +107,7 @@ For more information execute:
 
     if (!$executionRestricted) {
         # ensure PSSQLLib is imported from the location it was just installed to
-        Import-Module -Name $Destination\Expot-DMVInformation
+        Import-Module -Name $Destination\Export-DMVInformation
     }
     Write-Host "$moduleName is installed and ready to use" -Foreground Green
 
