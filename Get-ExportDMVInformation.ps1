@@ -70,8 +70,8 @@ function Install-ExportDMVInformation {
   
     $ModulePaths = @($env:PSModulePath -split ';')
     # $Export-DMVInformationDestinationModulePath is mostly needed for testing purposes,
-    if ((Test-Path -Path Variable:Export-DMVInformationDestinationModulePath) -and $Export-DMVInformationDestinationModulePath) {
-        $Destination = $Export-DMVInformationDestinationModulePath
+    if ((Test-Path -Path Variable:Export-DMVInformationDestinationModulePath) -and $ExportDMVInformationDestinationModulePath) {
+        $Destination = $ExportDMVInformationDestinationModulePath
         if ($ModulePaths -notcontains $Destination) {
             Write-Warning 'Export-DMVInformation install destination is not included in the PSModulePath environment variable'
         }
