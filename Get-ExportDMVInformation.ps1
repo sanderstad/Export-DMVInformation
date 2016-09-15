@@ -3,7 +3,7 @@
 # Adjusted to import the Export-DMVInformation module
 
 param (
-  [string[]]$url = ("https://github.com/sanderstad/Export-DMVInformation/raw/master/Export-DMVInformation.psm1", "https://github.com/sanderstad/Export-DMVInformation/raw/master/Export-DMVInformation.psd1")
+  [string[]]$url = ("https://raw.githubusercontent.com/sanderstad/Export-DMVInformation/master/Export-DMVInformation.psm1", "https://raw.githubusercontent.com/sanderstad/Export-DMVInformation/master/Export-DMVInformation.psd1")
 )
 
 function Find-Proxy() {
