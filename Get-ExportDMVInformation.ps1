@@ -1,6 +1,6 @@
 ﻿# Original file from https://github.com/psget/psget/
 #
-# Adjusted to import the PSSQLLib module
+# Adjusted to import the Export-DMVInformation module
 
 param (
   [string[]]$url = ("https://raw.githubusercontent.com/sanderstad/Export-DMVInformation/master/Export-DMVInformation.psd1", "https://raw.githubusercontent.com/sanderstad/Export-DMVInformation/master/Export-DMVInformation.psm1")
@@ -64,16 +64,16 @@ function Install-ExportDMVInformation {
   
     param (
       [string[]]
-      # URL to the respository to download PSSQLLib from
+      # URL to the respository to download Export-DMVInformation from
       $url
     )
   
     $ModulePaths = @($env:PSModulePath -split ';')
-    # $PSSQLLibDestinationModulePath is mostly needed for testing purposes,
-    if ((Test-Path -Path Variable:PSSQLLibDestinationModulePath) -and $PSSQLLibDestinationModulePath) {
-        $Destination = $PSSQLLibDestinationModulePath
+    # $Export-DMVInformationDestinationModulePath is mostly needed for testing purposes,
+    if ((Test-Path -Path Variable:Export-DMVInformationDestinationModulePath) -and $Export-DMVInformationDestinationModulePath) {
+        $Destination = $Export-DMVInformationDestinationModulePath
         if ($ModulePaths -notcontains $Destination) {
-            Write-Warning 'PSSQLLib install destination is not included in the PSModulePath environment variable'
+            Write-Warning 'Export-DMVInformation install destination is not included in the PSModulePath environment variable'
         }
     }
     else {
@@ -86,10 +86,10 @@ function Install-ExportDMVInformation {
     New-Item -Path ($Destination + "\Export-DMVInformation\") -ItemType Directory -Force | Out-Null
 
     Write-Host ('Downloading Export-DMVInformation from {0}' -f $url[0])
-    Get-File -Url $url[0] -SaveToLocation "$Destination\PSSQLLib\PSSQLLib.psm1"
+    Get-File -Url $url[0] -SaveToLocation "$Destination\Export-DMVInformation\Export-DMVInformation.psm1"
 
     Write-Host ('Downloading Export-DMVInformation from {0}' -f $url[1])
-    Get-File -Url $url[1] -SaveToLocation "$Destination\PSSQLLib\PSSQLLib.psd1"
+    Get-File -Url $url[1] -SaveToLocation "$Destination\Export-DMVInformation\Export-DMVInformation.psd1"
 
     $executionPolicy = (Get-ExecutionPolicy)
     $executionRestricted = ($executionPolicy -eq "Restricted")
@@ -104,8 +104,8 @@ For more information execute:
     }
 
     if (!$executionRestricted) {
-        # ensure PSSQLLib is imported from the location it was just installed to
-        Import-Module -Name $Destination\PSSQLLib
+        # ensure Export-DMVInformation is imported from the location it was just installed to
+        Import-Module -Name $Destination\Export-DMVInformation
     }
     Write-Host "Export-DMVInformation is installed and ready to use" -Foreground Green
 
