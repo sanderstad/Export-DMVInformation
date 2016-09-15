@@ -72,10 +72,10 @@ function Install-Module {
 
     $ModulePaths = @($env:PSModulePath -split ';')
     # $PSSQLLibDestinationModulePath is mostly needed for testing purposes,
-    if ((Test-Path -Path Variable:PSSQLLibDestinationModulePath) -and $ModulePath) {
+    if ((Test-Path -Path Variable:ModulePath) -and $ModulePath) {
         $Destination = $ModulePath
         if ($ModulePaths -notcontains $Destination) {
-            Write-Warning 'PSSQLLib install destination is not included in the PSModulePath environment variable'
+            Write-Warning "$moduleName install destination is not included in the PSModulePath environment variable"
         }
     }
     else {
@@ -107,7 +107,7 @@ For more information execute:
 
     if (!$executionRestricted) {
         # ensure PSSQLLib is imported from the location it was just installed to
-        Import-Module -Name $Destination\PSSQLLib
+        Import-Module -Name $Destination\Expot-DMVInformation
     }
     Write-Host "$moduleName is installed and ready to use" -Foreground Green
 
