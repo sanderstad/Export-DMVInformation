@@ -18,6 +18,8 @@
 #
 #  Changelog:
 #  v1.0: Initial version
+#  v1.1: Fixed issues with parsing the older DMV files < 2012
+#        Made the download of the DMV files more efficient
 #
 ################################################################################
 
@@ -126,43 +128,55 @@ function Export-DMVInformation
                 Write-Host "Database '$database' doesn't exists on '$instance'. Setting database to 'master'." -ForegroundColor Yellow
                 $database = 'master'
             }
+            
+            # Reset the dmv file
+            $dmvFile = ''
 
-            # Count the files to see if the script can continue
-            if(Test-Path $dmvlocation)
-            {       
-                $dmvFiles = Get-ChildItem $dmvlocation | Where-Object {$_.Extension -eq ".sql"}
+            # Check if the path exists
+            if(Test-Path $dmvLocation)
+            {
+                # Look in the directory for any sql files
+                $dmvFiles = $dmvFiles = Get-ChildItem $dmvlocation | Where-Object {$_.Extension -eq ".sql"}
 
-                # If there are no files
-                if($dmvFiles.Count -lt 1)
+                # Count the files
+                if($dmvFiles.Count -ge 1)
                 {
-                    Write-Host "No queries found, downloading from Glen Berry's blog"
+                    #switch($srv.VersionString)
+                    switch($srv.VersionString)
+                    {
+                        {$_ -like '9*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2005*'}).FullName}
+                        {$_ -like '10.0*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2008 D*'}).FullName}
+                        {$_ -like '10.5*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2008 R2*'}).FullName}
+                        {$_ -like '11*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2012*'}).FullName}
+                        {$_ -like '12*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2014*'}).FullName}
+                        {$_ -like '13*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2016*'}).FullName}
+                    }
 
+                    if(($dmvFile -eq $null) -or ($dmvFile -eq ''))
+                    {
+                        # Dowload the files
+                        Write-Host "File for SQL Server version not found, trying to download..."
+                        $dmvFile = Download-DMVFiles -destination $dmvlocation -sqlversion $srv.VersionString
+                    }
+
+                }
+                else
+                {
                     # Dowload the files
-                    Download-DMVFiles -destination $dmvlocation
-
-                    # Count the files to see if the script can continue       
-                    $dmvFiles = Get-ChildItem $dmvlocation | Where-Object {$_.Extension -eq ".sql"}
+                    Write-Host "File for SQL Server version not found, trying to download..."
+                    $dmvFile = Download-DMVFiles -destination $dmvlocation -sqlversion $srv.VersionString
                 }
             }
             else
             {
                 # Dowload the files
-                Download-DMVFiles -destination $dmvlocation
-
-                # Count the files to see if the script can continue       
-                $dmvFiles = Get-ChildItem $dmvlocation | Where-Object {$_.Extension -eq ".sql"}
+                Write-Host "File for SQL Server version not found, trying to download..."
+                $dmvFile = Download-DMVFiles -destination $dmvlocation -sqlversion $srv.VersionString
             }
 
-            # Check the version string of the server and select the dmv file
-            switch($srv.VersionString)
-            {
-                {$_ -like '9*'} {$dmvFile = $dmvFiles | Where-Object {$_.Name -like 'SQL Server 2005*'}}
-                {$_ -like '10.0*'} {$dmvFile = $dmvFiles | Where-Object {$_.Name -like 'SQL Server 2008 D*'}}
-                {$_ -like '10.5*'} {$dmvFile = $dmvFiles | Where-Object {$_.Name -like 'SQL Server 2008 R2*'}}
-                {$_ -like '11*'} {$dmvFile = $dmvFiles | Where-Object {$_.Name -like 'SQL Server 2012*'}}
-                {$_ -like '12*'} {$dmvFile = $dmvFiles | Where-Object {$_.Name -like 'SQL Server 2014*'}}
-                {$_ -like '13*'} {$dmvFile = $dmvFiles | Where-Object {$_.Name -like 'SQL Server 2016*'}}
-            }
+            # Use the DMV file to parse the queries
+            Write-Host "Parsing file '$dmvFile'"
+            $queries = Parse-DMVFile -file $dmvFile
 
 
             # Declare the variables
@@ -175,9 +189,6 @@ function Export-DMVInformation
 
             # Create the time stamp
             $timestamp = Get-Date -Format yyyyMMddHHmmss
-
-            # Create the array list to hold all the queries
-            $queries = Parse-DMVFile -file $dmvFile.FullName
 
             # Check if the array contains any queries to execute
             if($queries.Count -ge 1)
@@ -232,6 +243,10 @@ function Export-DMVInformation
                 }
 
             }
+            else
+            {
+                
+            }
         }
         else
         {
@@ -256,20 +271,29 @@ function Download-DMVFiles
     
     .PARAMETER destination
         Destination directory
+
+    .PARAMETER sqlversion
+        DVersion of the instance to specifically download the dmv file
     
     .EXAMPLE
         Download-DMVFiles -destination 'C:\Temp\dmv\queries' 
 
     .INPUTS
+
     .OUTPUTS
+        Return the location of the dmv file that was downloaded
+
     .NOTES
+
     .LINK
     #>
 
     param
     (
         [Parameter(Mandatory=$true, Position=1)]
-        [string]$destination
+        [string]$destination,
+        [Parameter(Mandatory=$true, Position=2)]
+        [string]$sqlversion = $null
     )
 
     # Test the destination
@@ -284,23 +308,59 @@ function Download-DMVFiles
 
     Write-Host "Downloading DMV Files..."
 
-    # Set the URL and download the files
-    $url2005 = 'https://dl.dropboxusercontent.com/u/13748067/SQL%20Server%202005%20Diagnostic%20Information%20Queries%20%28CY%202016%29.sql'
-    $url2008 = 'https://dl.dropboxusercontent.com/u/13748067/SQL%20Server%202008%20Diagnostic%20Information%20Queries%20%28CY%202016%29.sql'
-    $url2008R2 = 'https://dl.dropboxusercontent.com/u/13748067/SQL%20Server%202008%20R2%20Diagnostic%20Information%20Queries%20%28CY%202016%29.sql'
-    $url2012 = 'https://dl.dropboxusercontent.com/u/13748067/SQL%20Server%202012%20Diagnostic%20Information%20Queries%20%28September%202016%29.sql'
-    $url2014 = 'https://dl.dropboxusercontent.com/u/13748067/SQL%20Server%202014%20Diagnostic%20Information%20Queries%20%28September%202016%29.sql'
-    $url2016 = 'https://dl.dropboxusercontent.com/u/13748067/SQL%20Server%202016%20Diagnostic%20Information%20Queries%20%28September%202016%29.sql'
-    
-    $webClient.DownloadFile($url2005, "$destination\SQL Server 2005 Diagnostic Information Queries.sql")
-    $webClient.DownloadFile($url2008, "$destination\SQL Server 2008 Diagnostic Information Queries.sql")
-    $webClient.DownloadFile($url2008R2, "$destination\SQL Server 2008 R2 Diagnostic Information Queries.sql")
-    $webClient.DownloadFile($url2012, "$destination\SQL Server 2012 Diagnostic Information Queries.sql")
-    $webClient.DownloadFile($url2014, "$destination\SQL Server 2014 Diagnostic Information Queries.sql")
-    $webClient.DownloadFile($url2016, "$destination\SQL Server 2016 Diagnostic Information Queries.sql")
+    try
+    {
+        # Set the URL and download the files
+        $url2005 = 'https://raw.githubusercontent.com/sanderstad/Export-DMVInformation/master/dmvfiles/SQL%20Server%202005%20Diagnostic%20Information%20Queries.sql'
+        $url2008 = 'https://raw.githubusercontent.com/sanderstad/Export-DMVInformation/master/dmvfiles/SQL%20Server%202008%20Diagnostic%20Information%20Queries.sql'
+        $url2008R2 = 'https://raw.githubusercontent.com/sanderstad/Export-DMVInformation/master/dmvfiles/SQL%20Server%202008%20R2%20Diagnostic%20Information%20Queries.sql'
+        $url2012 = 'https://raw.githubusercontent.com/sanderstad/Export-DMVInformation/master/dmvfiles/SQL%20Server%202012%20Diagnostic%20Information%20Queries.sql'
+        $url2014 = 'https://raw.githubusercontent.com/sanderstad/Export-DMVInformation/master/dmvfiles/SQL%20Server%202014%20Diagnostic%20Information%20Queries.sql'
+        $url2016 = 'https://raw.githubusercontent.com/sanderstad/Export-DMVInformation/master/dmvfiles/SQL%20Server%202016%20Diagnostic%20Information%20Queries.sql'
+        
+        
+        switch($sqlversion)
+        {
+            {$_ -like '9*'} 
+            {
+                $webClient.DownloadFile($url2005, "$destination\SQL Server 2005 Diagnostic Information Queries.sql")
+                return "$destination\SQL Server 2005 Diagnostic Information Queries.sql"
+            }
+            {$_ -like '10.0*'} 
+            {
+                $webClient.DownloadFile($url2008, "$destination\SQL Server 2008 Diagnostic Information Queries.sql")
+                return "$destination\SQL Server 2008 Diagnostic Information Queries.sql"
+            }
+            {$_ -like '10.5*'} 
+            {
+                $webClient.DownloadFile($url2008R2, "$destination\SQL Server 2008 R2 Diagnostic Information Queries.sql")
+                return "$destination\SQL Server 2008 R2 Diagnostic Information Queries.sql"
+            }
+            {$_ -like '11*'} 
+            {
+                $webClient.DownloadFile($url2012, "$destination\SQL Server 2012 Diagnostic Information Queries.sql")
+                return "$destination\SQL Server 2012 Diagnostic Information Queries.sql"
+            }
+            {$_ -like '12*'} 
+            {
+                $webClient.DownloadFile($url2014, "$destination\SQL Server 2014 Diagnostic Information Queries.sql")
+                return "$destination\SQL Server 2014 Diagnostic Information Queries.sql"
+            }
+            {$_ -like '13*'} 
+            {
+                $webClient.DownloadFile($url2016, "$destination\SQL Server 2016 Diagnostic Information Queries.sql")
+                return "$destination\SQL Server 2016 Diagnostic Information Queries.sql"
+            }
+        }
+    }
+    catch
+    {
+        Write-Host "Couldn't download file" -ForegroundColor Red 
+        Write-Host $_.Exception.Message -ForegroundColor Red
+    }
 }
 
-#
+
 function Parse-DMVFile
 {
     <# 
@@ -332,10 +392,13 @@ function Parse-DMVFile
     # Create the result variable 
     $result = @()
 
+    # Set the db specific flag
+    $dbSpecific = $false
+
     #Loop through each line
     ForEach($line in Get-Content $file)
     {
-
+       
         # Check if the script is at the database specific queries
         if($line.Contains('Database specific queries'))
         {
@@ -343,7 +406,7 @@ function Parse-DMVFile
         }
 
         # If the line starts with dashes and has the text for the query number in it
-        if($line.StartsWith('--') -and ($line.IndexOf("(Query") -ne -1)) 
+        if($line.StartsWith('--') -and ($line.Contains("(Query"))) 
         {
             # Empty the query string t
             [string]$query = ""
@@ -362,7 +425,7 @@ function Parse-DMVFile
         } 
 
         # Check if the line starts with a selectong elements and the flag is set
-        if((($line -match 'SELECT') -or ($line -match 'WITH') -or ($line -match 'EXEC') -or ($line -match 'DBCC')) -and ($captureQuery -eq $false))
+        if((($line -match 'SELECT') -or ($line -match 'WITH') -or ($line -match 'EXEC') -or ($line -match 'DBCC') -or ($line -match 'CREATE') -or ($line -match 'DECLARE')) -and ($captureQuery -eq $false))
         {
             # Set the flag
             $captureQuery = $true
