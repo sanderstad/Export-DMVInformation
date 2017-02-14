@@ -5,15 +5,15 @@ Export the resuts from Glenn Berry's DMV queries directly to Excel
 
 Below are several examples how the module can be executed
 
-    Get-DMVInformation -instance 'SERVER1'
+    Export-DMVInformation -instance 'SERVER1'
 
-    Get-DMVInformation -instance 'SERVER1' -database 'DB1' -excludenstance
+    Export-DMVInformation -instance 'SERVER1' -database 'DB1' -excludenstance
 
-    Get-DMVInformation -instance 'SERVER1' -database 'DB1' -destination 'C:\Temp\dmv\results'
+    Export-DMVInformation -instance 'SERVER1' -database 'DB1' -destination 'C:\Temp\dmv\results'
 
-    'server1', 'server2' | Get-DMVInformation
+    'server1', 'server2' | Export-DMVInformation
 
-    'server1', 'server2' | Get-DMVInformation -database 'ALL'
+    'server1', 'server2' | Export-DMVInformation -database 'ALL'
 
 
 ## How to install
