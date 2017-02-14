@@ -67,7 +67,7 @@ function Export-DMVInformation
         Get-DMVInformation -instance 'SERVER1' 
 
     .EXAMPLE
-        Get-DMVInformation -instance 'SERVER1' -database 'DB1' -includeInstance $false
+        Get-DMVInformation -instance 'SERVER1' -database 'DB1' -excludeinstance
 
     .EXAMPLE    
         Get-DMVInformation -instance 'SERVER1' -database 'DB1' -destination 'C:\Temp\dmv\results'
@@ -101,7 +101,7 @@ function Export-DMVInformation
         [Parameter(Mandatory=$false, Position=6)]
         [string]$destination = ([Environment]::GetFolderPath("MyDocuments") + "\dmv\results"),
         [Parameter(Mandatory=$false, Position=7)]
-        [bool]$excludeinstance = $false,
+        [switch]$excludeinstance,
         [Parameter(Mandatory=$false, Position=8)]
         [int]$querytimeout = $null
     )
