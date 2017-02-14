@@ -1,7 +1,7 @@
-﻿################################################################################
+################################################################################
 #  Written by Sander Stad, SQLStad.nl
 # 
-#  (c) 2016, SQLStad.nl. All rights reserved.
+#  (c) 2017, SQLStad.nl. All rights reserved.
 # 
 #  For more scripts and sample code, check out http://www.SQLStad.nl
 # 
@@ -20,6 +20,9 @@
 #  v1.0: Initial version
 #  v1.1: Fixed issues with parsing the older DMV files < 2012
 #        Made the download of the DMV files more efficient
+#  v2.0: Modified module to get values from pipeline
+#        Inserted option to select all databases
+#        Changed output to window to verbose to make the script easier to follow
 #
 ################################################################################
 
@@ -69,6 +72,12 @@ function Export-DMVInformation
     .EXAMPLE    
         Get-DMVInformation -instance 'SERVER1' -database 'DB1' -destination 'C:\Temp\dmv\results'
 
+	.EXAMPLE
+        'server1', 'server2' | Get-DMVInformation
+
+	.EXAMPLE
+        'server1', 'server2' | Get-DMVInformation -database 'ALL'
+
     .INPUTS
     .OUTPUTS
     .NOTES
@@ -76,12 +85,13 @@ function Export-DMVInformation
         Module ImportExcel: https://github.com/dfinke/ImportExcel
         Glenn Berry's DMV site: http://www.sqlskills.com/blogs/glenn/category/dmv-queries/
     #>
-
+	[cmdletbinding()]
     param(
-        [Parameter(Mandatory=$true, Position=1)][ValidateNotNullOrEmpty()]
-        [string]$instance,
+        [Parameter(Mandatory=$true, Position=1, ValueFromPipeline=$true)]
+		[ValidateNotNullOrEmpty()]
+        [string[]]$instance,
         [Parameter(Mandatory=$false, Position=2)]
-        [string]$database = $null,
+        [string[]]$database = $null,
         [Parameter(Mandatory=$false, Position=3)]
         [string]$username = $null,
         [Parameter(Mandatory=$false, Position=4)]
@@ -96,168 +106,194 @@ function Export-DMVInformation
         [int]$querytimeout = $null
     )
 
-    # Check if The neccesary modules are installed
-    if (Get-Module -Name 'ImportExcel') 
-    {
-            Write-Host 
+	Begin
+	{
+
+		# Check if The neccesary modules are installed
+		if (Get-Module -Name 'ImportExcel') 
+		{
+
+			# Test the destination
+			if(!(Test-Path $destination))
+			{
+				Write-Verbose -Message "Destination '$destination' doesn't exist. Creating..."
+				New-Item -ItemType directory -Path $destination | Out-Null
+			}
+
+    
+			# Check if assembly is loaded
+			Load-Assembly -name 'Microsoft.SqlServer.Smo'
+		} 
+		else 
+		{
+			Write-Error "Module ImportExcel is not installed or is not imported." -ForegroundColor Red
+		}
+	}
+
+	Process
+	{
+		# Check if they commandlet is eecuted from a pipeline
+		if ($PSCmdlet.MyInvocation.ExpectingInput) 
+		{
+			$i = $_
+		}
+		else
+		{
+			$i = $instance[0]
+		}
+
+		Write-Host 
 "Starting DMV Information Retrieval:
 - Instance:    $instance
 - Database:    $database
 - Destination: $destination
 "
+		# Create the SMO server object
+		$srv = New-Object Microsoft.SqlServer.Management.Smo.Server $i
 
-        # Test the destination
-        if(!(Test-Path $destination))
-        {
-            Write-Host "Destination '$destination' doesn't exist. Creating..."
-            New-Item -ItemType directory -Path $destination | Out-Null
-        }
-
-    
-        # Check if assembly is loaded
-        Load-Assembly -name 'Microsoft.SqlServer.Smo'
-
-        # Create the SMO server object
-        $srv = New-Object Microsoft.SqlServer.Management.Smo.Server $instance
-
-        if($srv.VersionString -ne $null)
-        {
-            # Test if the database exists
-            if((($database -ne $null) -or ($database -ne '')) -and ($srv.Databases.Name -notcontains $database))
-            {
-                Write-Host "Database '$database' doesn't exists on '$instance'. Setting database to 'master'." -ForegroundColor Yellow
-                $database = 'master'
-            }
+		if($srv.VersionString -ne $null)
+		{
+				
+			# Check the database parameter
+			if($database.ToUpper() -eq 'ALL')
+			{
+				# Get all databases
+				$dbs = $srv.Databases.Name
+			}
+			# Test if the database exists
+			elseif((($database -ne $null) -or ($database -ne '')) -and ($srv.Databases.Name -notcontains $database))
+			{
+				Write-Verbose -Message "Database '$database' doesn't exists on '$instance'. Setting database to 'master'."
+				$dbs = 'master'
+			}
+				
             
-            # Reset the dmv file
-            $dmvFile = ''
+			# Reset the dmv file
+			$dmvFile = ''
 
-            # Check if the path exists
-            if(Test-Path $dmvLocation)
-            {
-                # Look in the directory for any sql files
-                $dmvFiles = $dmvFiles = Get-ChildItem $dmvlocation | Where-Object {$_.Extension -eq ".sql"}
+			# Check if the path exists
+			if(Test-Path $dmvLocation)
+			{
+				# Look in the directory for any sql files
+				$dmvFiles = $dmvFiles = Get-ChildItem $dmvlocation | Where-Object {$_.Extension -eq ".sql"}
 
-                # Count the files
-                if($dmvFiles.Count -ge 1)
-                {
-                    #switch($srv.VersionString)
-                    switch($srv.VersionString)
-                    {
-                        {$_ -like '9*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2005*'}).FullName}
-                        {$_ -like '10.0*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2008 D*'}).FullName}
-                        {$_ -like '10.5*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2008 R2*'}).FullName}
-                        {$_ -like '11*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2012*'}).FullName}
-                        {$_ -like '12*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2014*'}).FullName}
-                        {$_ -like '13*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2016*'}).FullName}
-                    }
+				# Count the files
+				if($dmvFiles.Count -ge 1)
+				{
+					#switch($srv.VersionString)
+					switch($srv.VersionString)
+					{
+						{$_ -like '9*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2005*'}).FullName}
+						{$_ -like '10.0*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2008 D*'}).FullName}
+						{$_ -like '10.5*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2008 R2*'}).FullName}
+						{$_ -like '11*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2012*'}).FullName}
+						{$_ -like '12*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2014*'}).FullName}
+						{$_ -like '13*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2016*'}).FullName}
+					}
 
-                    if(($dmvFile -eq $null) -or ($dmvFile -eq ''))
-                    {
-                        # Dowload the files
-                        Write-Host "File for SQL Server version not found, trying to download..."
-                        $dmvFile = Download-DMVFiles -destination $dmvlocation -sqlversion $srv.VersionString
-                    }
+					if(($dmvFile -eq $null) -or ($dmvFile -eq ''))
+					{
+						# Dowload the files
+						Write-Host "File for SQL Server version not found, trying to download..."
+						$dmvFile = Download-DMVFiles -destination $dmvlocation -sqlversion $srv.VersionString
+					}
 
-                }
-                else
-                {
-                    # Dowload the files
-                    Write-Host "File for SQL Server version not found, trying to download..."
-                    $dmvFile = Download-DMVFiles -destination $dmvlocation -sqlversion $srv.VersionString
-                }
-            }
-            else
-            {
-                # Dowload the files
-                Write-Host "File for SQL Server version not found, trying to download..."
-                $dmvFile = Download-DMVFiles -destination $dmvlocation -sqlversion $srv.VersionString
-            }
+				}
+				else
+				{
+					# Dowload the files
+					Write-Verbose "File for SQL Server version not found, trying to download..."
+					$dmvFile = Download-DMVFiles -destination $dmvlocation -sqlversion $srv.VersionString
+				}
+			}
+			else
+			{
+				# Dowload the files
+				Write-Verbose "File for SQL Server version not found, trying to download..."
+				$dmvFile = Download-DMVFiles -destination $dmvlocation -sqlversion $srv.VersionString
+			}
 
-            # Use the DMV file to parse the queries
-            Write-Host "Parsing file '$dmvFile'"
-            $queries = Parse-DMVFile -file $dmvFile
+			# Use the DMV file to parse the queries
+			Write-Verbose -Message "Parsing file '$dmvFile'"
+			$queries = Parse-DMVFile -file $dmvFile
 
 
-            # Declare the variables
-            [int]$queryNumber = 0                      # Number of the query
-            [bool]$dbSpecific = $false                 # Flag to see if the queries are database specific
-            [string]$queryTitle = ""                   # Title of the query, later used for naming the Excel tabs
-            [string]$description = ""                  # Description of the query used for informational purposes
-            [string]$query = ""                        # The actual query
-            [bool]$captureQuery = $false               # Flag to see if the script needs to capture the lines to create the query
+			# Declare the variables
+			[int]$queryNumber = 0                      # Number of the query
+			[bool]$dbSpecific = $false                 # Flag to see if the queries are database specific
+			[string]$queryTitle = ""                   # Title of the query, later used for naming the Excel tabs
+			[string]$description = ""                  # Description of the query used for informational purposes
+			[string]$query = ""                        # The actual query
+			[bool]$captureQuery = $false               # Flag to see if the script needs to capture the lines to create the query
 
-            # Create the time stamp
-            $timestamp = Get-Date -Format yyyyMMddHHmmss
+			# Create the time stamp
+			$timestamp = Get-Date -Format yyyyMMddHHmmss
 
-            # Check if the array contains any queries to execute
-            if($queries.Count -ge 1)
-            {
-                # Loop through all the items
-                Foreach($item in $queries)
-                {
+			# Check if the array contains any queries to execute
+			if($queries.Count -ge 1)
+			{
+				# Loop through all the items
+				Foreach($item in $queries)
+				{
+					# Reset the result set
+					$result = $null
 
-                    # Reset the result set
-                    $result = $null
+					# Check if the query is meant for the instance
+					if(($item.DBSpecific -eq $false) -and ($excludeinstance -eq $false))
+					{
+						Write-Verbose -Message ("Executing Query " + $item.QueryNr + " - " + $item.QueryTitle)
 
-                    # Check if the query is meant for the instance
-                    if(($item.DBSpecific -eq $false) -and ($excludeinstance -eq $false))
-                    {
-                        Write-Host "Executing Query " $item.QueryNr " - " $item.QueryTitle
-
-                        # Execute the query
-                        $result = Execute-Query -instance $instance -database $database -username $username -password $password -query $item.Query -queryTimeout $querytimeout
+						# Execute the query
+						$result = Execute-Query -instance $i -database 'master' -username $username -password $password -query $item.Query -queryTimeout $querytimeout
                         
-                        # Check if any values returned and write to the Excel file
-                        if($result -ne $null)
-                        {
-                            $result | Export-Excel -Path "$destination\$($instance.Replace('\', '$'))_$($timestamp).xlsx" -WorkSheetname $($item.QueryTitle) -TableName $("Table" + $item.QueryNr) -TableStyle Dark9 
+						# Check if any values returned and write to the Excel file
+						if($result -ne $null)
+						{
+							$result | Export-Excel -Path "$destination\$($i.Replace('\', '$'))_$($timestamp).xlsx" -WorkSheetname $($item.QueryTitle) -TableName $("Table" + $item.QueryNr) -TableStyle Dark9 
                             
-                        }
-                        else
-                        {
-                            "No Data" | Export-Excel -Path "$destination\$($instance.Replace('\', '$'))_$($timestamp).xlsx" -WorkSheetname $($item.QueryTitle)
-                        }
+						}
+						else
+						{
+							"No Data" | Export-Excel -Path "$destination\$($i.Replace('\', '$'))_$($timestamp).xlsx" -WorkSheetname $($item.QueryTitle)
+						}
 
-                    }
+					}
 
-                    # Check if the query is database specific
-                    if(($item.DBSpecific -eq $true) -and (($database -ne $null) -or ($database -ne '')))
-                    {
-                        Write-Host "Executing Query " $item.QueryNr " - " $item.QueryTitle
+					# Check if the query is database specific
+					if(($item.DBSpecific -eq $true) -and (($database -ne $null) -or ($database -ne '')))
+					{
+						foreach($db in $dbs)
+						{
+							Write-Verbose -Message ("Executing Query " + $item.QueryNr + " - " + $item.QueryTitle + " for database " + $db)
 
-                        # Execute the query
-                        $result = Execute-Query -instance $instance -database $database -username $username -password $password -query $item.Query -queryTimeout $querytimeout
+							# Execute the query
+							$result = Execute-Query -instance $i -database $db -username $username -password $password -query $item.Query -queryTimeout $querytimeout
 
-                        # Check if any values returned and write to the Excel file
-                        if($result -ne $null)
-                        {
-                            $result | Export-Excel -Path "$destination\$($instance.Replace('\', '$'))_$($database)_$($timestamp).xlsx" -WorkSheetname $($item.QueryTitle) -TableName $("Table" + $item.QueryNr) -TableStyle Dark9  
-                        }
-                        else
-                        {
-                            "No Data" | Export-Excel -Path "$destination\$($instance.Replace('\', '$'))_$($database)_$($timestamp).xlsx" -WorkSheetname $($item.QueryTitle)
-                        }
-                    }
+							# Check if any values returned and write to the Excel file
+							if($result -ne $null)
+							{
+								$result | Export-Excel -Path "$destination\$($i.Replace('\', '$'))_$($db)_$($timestamp).xlsx" -WorkSheetname $($item.QueryTitle) -TableName $("Table" + $item.QueryNr) -TableStyle Dark9  
+							}
+							else
+							{
+								"No Data" | Export-Excel -Path "$destination\$($i.Replace('\', '$'))_$($db)_$($timestamp).xlsx" -WorkSheetname $($item.QueryTitle)
+							}
+						}
+					}
 
-                }
+				}
 
-            }
-            else
-            {
+			}
+			else
+			{
                 
-            }
-        }
-        else
-        {
-            Write-Host "Couldn't connect to instance $instance" -ForegroundColor Red 
-        }
-    } 
-    else 
-    {
-        Write-Host "Module ImportExcel is not installed or is not imported." -ForegroundColor Red
-    }
-
+			}
+		}
+		else
+		{
+			Write-Error "Couldn't connect to instance $i" -ForegroundColor Red 
+		}
+	}
 }
 
 function Download-DMVFiles
