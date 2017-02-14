@@ -64,19 +64,19 @@ function Export-DMVInformation
         Timeout how long a query may take in seconds 
 
     .EXAMPLE
-        Get-DMVInformation -instance 'SERVER1' 
+        Export-DMVInformation -instance 'SERVER1' 
 
     .EXAMPLE
-        Get-DMVInformation -instance 'SERVER1' -database 'DB1' -excludeinstance
+        Export-DMVInformation -instance 'SERVER1' -database 'DB1' -excludeinstance
 
     .EXAMPLE    
-        Get-DMVInformation -instance 'SERVER1' -database 'DB1' -destination 'C:\Temp\dmv\results'
+        Export-DMVInformation -instance 'SERVER1' -database 'DB1' -destination 'C:\Temp\dmv\results'
 
 	.EXAMPLE
-        'server1', 'server2' | Get-DMVInformation
+        'server1', 'server2' | Export-DMVInformation
 
 	.EXAMPLE
-        'server1', 'server2' | Get-DMVInformation -database 'ALL'
+        'server1', 'server2' | Export-DMVInformation -database 'ALL'
 
     .INPUTS
     .OUTPUTS
