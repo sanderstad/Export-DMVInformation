@@ -28,56 +28,59 @@
 
 function Export-DMVInformation
 {
-    <# 
-    .SYNOPSIS
-        Parse the DMV query files made by Glen Berry and export the results to an Excel document
+<# 
+.SYNOPSIS
+Parse the DMV query files made by Glen Berry and export the results to an Excel document
+
+.DESCRIPTION
+The script will parse a specific DMV query file made by Glen Berry.
+After parsing the queries it will loop through each of the queries and
+if needed execute it. 
+The script will write the results to an Excel file.
+
+.PARAMETER instance
+The instance to connect to
     
-    .DESCRIPTION
-        The script will parse a specific DMV query file made by Glen Berry.
-        After parsing the queries it will loop through each of the queries and
-        if needed execute it. 
-        The script will write the results to an Excel file.
+.PARAMETER database 
+The database to query out
+
+.PARAMETER dmvLocation
+The location where to find the DMV query files
+
+.PARAMETER destination
+The destination where to write the results to
+
+.PARAMETER excludeinstance
+Flag to exclude the queries for the instance
     
-    .PARAMETER instance
-        The instance to connect to
-        
-    .PARAMETER database 
-        The database to query out
+.PARAMETER SqlCredential
+Allows you to login to servers using SQL Logins as opposed to Windows Auth/Integrated/Trusted. To use:
+$scred = Get-Credential, then pass $scred object to the -SqlCredential parameter. 
+To connect as a different Windows user, run PowerShell as that user.
 
-    .PARAMETER dmvLocation
-        The location where to find the DMV query files
+.PARAMETER queryTimout
+Timeout how long a query may take in seconds 
 
-    .PARAMETER destination
-        The destination where to write the results to
+.EXAMPLE
+Get-DMVInformation -instance 'SERVER1' 
 
-    .PARAMETER excludeinstance
-        Flag to exclude the queries for the instance
-    
-    .PARAMETER username
-        Username needed if SQL authentication is required
-    
-    .PARAMETER password
-        Password needed if SQL authentication is required
+.EXAMPLE
+Get-DMVInformation -instance 'SERVER1' -database 'DB1' -includeInstance $false
 
-    .PARAMETER queryTimout
-        Timeout how long a query may take in seconds 
+.EXAMPLE    
+Get-DMVInformation -instance 'SERVER1' -database 'DB1' -destination 'C:\Temp\dmv\results'
 
-    .EXAMPLE
-        Get-DMVInformation -instance 'SERVER1' 
+.EXAMPLE    
+server1, server2, server3 | Get-DMVInformation -database 'DB1' -destination 'C:\Temp\dmv\results'
 
-    .EXAMPLE
-        Get-DMVInformation -instance 'SERVER1' -database 'DB1' -includeInstance $false
-
-    .EXAMPLE    
-        Get-DMVInformation -instance 'SERVER1' -database 'DB1' -destination 'C:\Temp\dmv\results'
-
-    .INPUTS
-    .OUTPUTS
-    .NOTES
-    .LINK
-        Module ImportExcel: https://github.com/dfinke/ImportExcel
-        Glenn Berry's DMV site: http://www.sqlskills.com/blogs/glenn/category/dmv-queries/
-    #>
+.INPUTS
+.OUTPUTS
+.NOTES
+.LINK
+Module ImportExcel: https://github.com/dfinke/ImportExcel
+dbatools: http://dbatools.io/
+Glenn Berry's DMV site: http://www.sqlskills.com/blogs/glenn/category/dmv-queries/
+#>
 
     param(
         [Parameter(Mandatory=$true, Position=1, ValueFromPipeline=$true)][ValidateNotNullOrEmpty()]
@@ -274,31 +277,31 @@ function Export-DMVInformation
 
 function Get-DMVFile
 {
-    <# 
-    .SYNOPSIS
-        Function to download the DMV files
-    
-    .DESCRIPTION
-        This script will download the DMV files by Glenn Berry to a specific location
-    
-    .PARAMETER destination
-        Destination directory
+<# 
+.SYNOPSIS
+Function to download the DMV files
 
-    .PARAMETER sqlversion
-        DVersion of the instance to specifically download the dmv file
-    
-    .EXAMPLE
-        Get-DMVFile -destination 'C:\Temp\dmv\queries' 
+.DESCRIPTION
+This script will download the DMV files by Glenn Berry to a specific location
 
-    .INPUTS
+.PARAMETER destination
+Destination directory
 
-    .OUTPUTS
-        Return the location of the dmv file that was downloaded
+.PARAMETER sqlversion
+DVersion of the instance to specifically download the dmv file
 
-    .NOTES
+.EXAMPLE
+Get-DMVFile -destination 'C:\Temp\dmv\queries' 
 
-    .LINK
-    #>
+.INPUTS
+
+.OUTPUTS
+Return the location of the dmv file that was downloaded
+
+.NOTES
+
+.LINK
+#>
 
     param
     (
@@ -375,25 +378,25 @@ function Get-DMVFile
 
 function Parse-DMVFile
 {
-    <# 
-    .SYNOPSIS
-        Function to parse the DMV file
-    
-    .DESCRIPTION
-        This function will parse the DMV file and put it into an array.
-        It will designate each query with a title, description, if its database specific and the query itself
-    
-    .PARAMETER file
-        DMV file to parse
-    
-    .EXAMPLE
-        Parse-DMVFile -file 'C:\temp\queries\file.sql'
+<# 
+.SYNOPSIS
+    Function to parse the DMV file
 
-    .INPUTS
-    .OUTPUTS
-    .NOTES
-    .LINK
-    #>
+.DESCRIPTION
+    This function will parse the DMV file and put it into an array.
+    It will designate each query with a title, description, if its database specific and the query itself
+
+.PARAMETER file
+    DMV file to parse
+
+.EXAMPLE
+    Parse-DMVFile -file 'C:\temp\queries\file.sql'
+
+.INPUTS
+.OUTPUTS
+.NOTES
+.LINK
+#>
 
     param
     (
