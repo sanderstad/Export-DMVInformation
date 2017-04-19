@@ -85,8 +85,8 @@ Glenn Berry's DMV site: http://www.sqlskills.com/blogs/glenn/category/dmv-querie
     param(
         [Parameter(Mandatory=$true, Position=1, ValueFromPipeline=$true)][ValidateNotNullOrEmpty()]
         [string[]]$instance,
-        [Parameter(Mandatory=$true, Position=2)]
-        [string[]]$database,
+        [Parameter(Mandatory=$false, Position=2)]
+        [string[]]$database = 'ALL',
         [Parameter(Mandatory = $false)]
         [System.Management.Automation.PSCredential]$SqlCredential,
         [Parameter(Mandatory=$false, Position=5)]
@@ -94,8 +94,10 @@ Glenn Berry's DMV site: http://www.sqlskills.com/blogs/glenn/category/dmv-querie
         [Parameter(Mandatory=$false, Position=6)]
         [string]$destination = ([Environment]::GetFolderPath("MyDocuments") + "\dmv\results"),
         [Parameter(Mandatory=$false, Position=7)]
-        [bool]$excludeinstance = $false,
+        [switch]$excludeinstance,
         [Parameter(Mandatory=$false, Position=8)]
+        [switch]$excludedb,
+        [Parameter(Mandatory=$false, Position=9)]
         [int]$querytimeout = $null
     )
 
@@ -132,20 +134,21 @@ Glenn Berry's DMV site: http://www.sqlskills.com/blogs/glenn/category/dmv-querie
 
         if($Server.VersionString -ne $null)
         {
-            
-            # Check the database parameter
-            if($database.ToUpper() -eq 'ALL')
+            if(-not $excludedb)
             {
-                # Get all databases
-                $database = $Server.Databases | Where-Object {$_.Status -in "Normal", "Normal, Standby"} | Select-Object Name
+                # Check the database parameter
+                if($database.ToUpper() -eq 'ALL')
+                {
+                    # Get all databases
+                    $database = ($Server.Databases | Where-Object {$_.Status -in "Normal", "Normal, Standby"}).Name
+                }
+                # Test if the database exists
+                elseif((($database -ne $null) -or ($database -ne '')) -and ($Server.Databases.Name -notcontains $database))
+                {
+                    Write-Host "Database '$database' doesn't exists on '$instance'. Setting database to 'master'." -ForegroundColor Yellow
+                    $database = 'master'
+                }
             }
-            # Test if the database exists
-            elseif((($database -ne $null) -or ($database -ne '')) -and ($Server.Databases.Name -notcontains $database))
-            {
-                Write-Host "Database '$database' doesn't exists on '$instance'. Setting database to 'master'." -ForegroundColor Yellow
-                $database = 'master'
-            }
-        
             # Reset the dmv file
             $dmvFile = ''
 
@@ -221,7 +224,7 @@ Glenn Berry's DMV site: http://www.sqlskills.com/blogs/glenn/category/dmv-querie
                     $result = $null
 
                     # Check if the query is meant for the instance
-                    if(($item.DBSpecific -eq $false) -and ($excludeinstance -eq $false))
+                    if(($item.DBSpecific -eq $false) -and (-not ($excludeinstance)))
                     {
                         Write-Host "Executing Query $($QueryNr) - $($QueryTitle)"
 
@@ -242,7 +245,7 @@ Glenn Berry's DMV site: http://www.sqlskills.com/blogs/glenn/category/dmv-querie
                     }
 
                     # Check if the query is database specific
-                    if(($item.DBSpecific -eq $true) -and (($database -ne $null) -or ($database -ne '')))
+                    if(($item.DBSpecific -eq $true) -and (-not ($excludedb)))
                     {
                         foreach($db in $database)
                         {
