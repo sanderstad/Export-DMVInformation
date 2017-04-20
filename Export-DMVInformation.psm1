@@ -1,7 +1,7 @@
 ################################################################################
 #  Written by Sander Stad, SQLStad.nl
 # 
-#  (c) 2017, SQLStad.nl. All rights reserved.
+#  (c) 2016, SQLStad.nl. All rights reserved.
 # 
 #  For more scripts and sample code, check out http://www.SQLStad.nl
 # 
@@ -170,8 +170,8 @@ Glenn Berry's DMV site: http://www.sqlskills.com/blogs/glenn/category/dmv-querie
                         {$_ -like '11*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2012*'}).FullName}
                         {$_ -like '12*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2014*'}).FullName}
                         {$_ -like '13.0.1*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2016 PreSP1*'}).FullName}
-                        {$_ -like '13.0.*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2016*'}).FullName}
-                        {$_ -like '14.0.*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2017*'}).FullName}
+                        {$_ -like '13*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2016*'}).FullName}
+                        {$_ -like '14*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2017*'}).FullName}
                     }
 
                     if(($dmvFile -eq $null) -or ($dmvFile -eq ''))
@@ -370,8 +370,8 @@ Return the location of the dmv file that was downloaded
             }
             {$_ -like '13.0.1*'} 
             {
-                $webClient.DownloadFile($url2016, "$destination\SQL Server 2016 Diagnostic Information Queries.sql")
-                return "$destination\SQL Server 2016 Diagnostic Information Queries.sql"
+                $webClient.DownloadFile($url2016presp1, "$destination\SQL Server 2016 PreSP1 Diagnostic Information Queries.sql")
+                return "$destination\SQL Server 2016 PreSP1 Diagnostic Information Queries.sql"
             }
             {$_ -like '13*'} 
             {
