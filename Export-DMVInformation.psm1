@@ -1,7 +1,7 @@
-﻿################################################################################
+################################################################################
 #  Written by Sander Stad, SQLStad.nl
 # 
-#  (c) 2016, SQLStad.nl. All rights reserved.
+#  (c) 2017, SQLStad.nl. All rights reserved.
 # 
 #  For more scripts and sample code, check out http://www.SQLStad.nl
 # 
@@ -169,7 +169,9 @@ Glenn Berry's DMV site: http://www.sqlskills.com/blogs/glenn/category/dmv-querie
                         {$_ -like '10.5*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2008 R2*'}).FullName}
                         {$_ -like '11*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2012*'}).FullName}
                         {$_ -like '12*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2014*'}).FullName}
-                        {$_ -like '13*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2016*'}).FullName}
+                        {$_ -like '13.0.1*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2016 PreSP1*'}).FullName}
+                        {$_ -like '13.0.*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2016*'}).FullName}
+                        {$_ -like '14.0.*'} {$dmvFile = ($dmvFiles | Where-Object {$_.Name -like 'SQL Server 2017*'}).FullName}
                     }
 
                     if(($dmvFile -eq $null) -or ($dmvFile -eq ''))
@@ -334,7 +336,9 @@ Return the location of the dmv file that was downloaded
         $url2008R2 = 'https://raw.githubusercontent.com/sanderstad/Export-DMVInformation/master/dmvfiles/SQL%20Server%202008%20R2%20Diagnostic%20Information%20Queries.sql'
         $url2012 = 'https://raw.githubusercontent.com/sanderstad/Export-DMVInformation/master/dmvfiles/SQL%20Server%202012%20Diagnostic%20Information%20Queries.sql'
         $url2014 = 'https://raw.githubusercontent.com/sanderstad/Export-DMVInformation/master/dmvfiles/SQL%20Server%202014%20Diagnostic%20Information%20Queries.sql'
+        $url2016presp1 = 'https://raw.githubusercontent.com/sanderstad/Export-DMVInformation/master/dmvfiles/SQL%20Server%202016%20PreSP1%20Diagnostic%20Information%20Queries.sql'
         $url2016 = 'https://raw.githubusercontent.com/sanderstad/Export-DMVInformation/master/dmvfiles/SQL%20Server%202016%20Diagnostic%20Information%20Queries.sql'
+        $url2017 = 'https://raw.githubusercontent.com/sanderstad/Export-DMVInformation/master/dmvfiles/SQL%20Server%202017%20Diagnostic%20Information%20Queries.sql'
         
         
         switch($sqlversion)
@@ -364,10 +368,20 @@ Return the location of the dmv file that was downloaded
                 $webClient.DownloadFile($url2014, "$destination\SQL Server 2014 Diagnostic Information Queries.sql")
                 return "$destination\SQL Server 2014 Diagnostic Information Queries.sql"
             }
+            {$_ -like '13.0.1*'} 
+            {
+                $webClient.DownloadFile($url2016, "$destination\SQL Server 2016 Diagnostic Information Queries.sql")
+                return "$destination\SQL Server 2016 Diagnostic Information Queries.sql"
+            }
             {$_ -like '13*'} 
             {
                 $webClient.DownloadFile($url2016, "$destination\SQL Server 2016 Diagnostic Information Queries.sql")
                 return "$destination\SQL Server 2016 Diagnostic Information Queries.sql"
+            }
+            {$_ -like '14*'} 
+            {
+                $webClient.DownloadFile($url2017, "$destination\SQL Server 2017 Diagnostic Information Queries.sql")
+                return "$destination\SQL Server 2017 Diagnostic Information Queries.sql"
             }
         }
     }
